@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { SYSTEM_PROMPT, buildCompliancePrompt, AssessmentContext } from "@/lib/ai-prompts";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -15,6 +16,10 @@ function extractJSON(text: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  const limited = checkRateLimit(`compliance:${ip}`);
+  if (limited) return limited;
+
   try {
     const body: AssessmentContext = await request.json();
 
